@@ -18,10 +18,11 @@ local InterfaceManager = loadstring(game:HttpGet(
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
+
+math.randomseed(os.clock() * 100000)
 
 --==================================================
 -- JANELA PRINCIPAL
@@ -53,11 +54,6 @@ local Tabs = {
         Icon = "trending-up"
     }),
 
-    TreeUpgrade = Window:AddTab({
-        Title = "Upgrade de árvore",
-        Icon = "trees"
-    }),
-
     Performance = Window:AddTab({
         Title = "Desempenho",
         Icon = "gauge"
@@ -83,6 +79,7 @@ Tabs.Main:AddParagraph({
 Tabs.Main:AddButton({
     Title = "Notificação de teste",
     Description = "Testar o sistema de notificações.",
+
     Callback = function()
         Fluent:Notify({
             Title = "Apple Farm",
@@ -95,6 +92,7 @@ Tabs.Main:AddButton({
 Tabs.Main:AddToggle("MainToggle", {
     Title = "Exemplo de toggle",
     Default = false,
+
     Callback = function(Value)
         print("Toggle Main:", Value)
     end
@@ -106,6 +104,7 @@ Tabs.Main:AddSlider("MainSlider", {
     Min = 1,
     Max = 10,
     Rounding = 0,
+
     Callback = function(Value)
         print("Valor:", Value)
     end
@@ -115,6 +114,7 @@ Tabs.Main:AddDropdown("MainDropdown", {
     Title = "Exemplo de seleção",
     Values = {"Opção 1", "Opção 2", "Opção 3"},
     Default = "Opção 1",
+
     Callback = function(Value)
         print("Selecionado:", Value)
     end
@@ -124,6 +124,7 @@ Tabs.Main:AddInput("MainInput", {
     Title = "Texto de exemplo",
     Default = "",
     Placeholder = "Digite algo...",
+
     Callback = function(Value)
         print("Texto:", Value)
     end
@@ -193,7 +194,7 @@ Tabs.Farm:AddToggle("FarmToggle", {
 })
 
 --==================================================
--- UPGRADE DE MAÇÃ
+-- UPGRADE AUTOMÁTICO DA TABELA
 --==================================================
 
 local BuyUpgrade = ReplicatedStorage
@@ -222,12 +223,12 @@ local upgradeAtivado = false
 local upgradeWorker = false
 
 Tabs.Upgrade:AddParagraph({
-    Title = "Upgrade automático de maçã",
-    Content = "Tenta comprar os upgrades continuamente enquanto estiver ativado."
+    Title = "Upgrade da tabela de maçã",
+    Content = "Escolhe upgrades aleatórios da tabela e tenta comprar continuamente."
 })
 
 Tabs.Upgrade:AddToggle("UpgradeToggle", {
-    Title = "Ativar upgrades de maçã",
+    Title = "Upgrade automático da tabela",
     Default = false,
 
     Callback = function(Value)
@@ -239,121 +240,30 @@ Tabs.Upgrade:AddToggle("UpgradeToggle", {
             task.spawn(function()
                 while upgradeAtivado do
 
-                    for _, upgrade in ipairs(upgradesMacas) do
-                        if not upgradeAtivado then
-                            break
-                        end
+                    -- Escolher upgrade aleatório
+                    local indice = math.random(1, #upgradesMacas)
+                    local upgrade = upgradesMacas[indice]
 
-                        local nome = upgrade[1]
-                        local maximo = upgrade[2]
+                    local nome = upgrade[1]
+                    local maximo = upgrade[2]
 
-                        for nivel = 1, maximo do
-                            if not upgradeAtivado then
-                                break
-                            end
+                    -- Tentar comprar um nível
+                    local sucesso, resultado = pcall(function()
+                        return BuyUpgrade:InvokeServer(nome, true)
+                    end)
 
-                            pcall(function()
-                                BuyUpgrade:InvokeServer(nome, true)
-                            end)
-
-                            task.wait(0.5)
-                        end
+                    if not sucesso then
+                        warn("Erro no upgrade:", nome, resultado)
+                    elseif resultado == false then
+                        print("Upgrade não comprado:", nome)
+                    else
+                        print("Tentativa de upgrade:", nome)
                     end
 
-                    task.wait(1)
+                    task.wait(0.7)
                 end
 
                 upgradeWorker = false
-            end)
-        end
-    end
-})
-
---==================================================
--- UPGRADE DE ÁRVORE
---==================================================
-
-local BuyAppleUpgrade = ReplicatedStorage
-    :WaitForChild("Network")
-    :WaitForChild("AppleTreeService")
-    :WaitForChild("RF")
-    :WaitForChild("BuyAppleUpgrade")
-
-local upgradesArvore = {
-    "Juicy Harvest I",
-    "Juicy Harvest II",
-    "Juicy Harvest III",
-    "Juicy Harvest IV",
-    "Juicy Harvest V",
-
-    "Autumn Fortune I",
-    "Autumn Fortune II",
-    "Autumn Fortune III",
-
-    "Autumn Luck I",
-    "Autumn Luck II",
-    "Autumn Luck III",
-
-    "Golden Basket",
-
-    "Seedling: Hearty Meal I",
-    "Seedling: Hearty Meal II",
-
-    "Leaf Strength I",
-    "Leaf Strength II",
-    "Leaf Strength III",
-
-    "Swift Feast I",
-    "Swift Feast II",
-
-    "Fallen Leaves I",
-    "Fallen Leaves II",
-    "Fallen Leaves III",
-    "Fallen Leaves IV",
-
-    "Acorn Charm I",
-    "Acorn Charm II",
-    "Acorn Charm III",
-    "Acorn Charm IV"
-}
-
-local treeUpgradeAtivado = false
-local treeUpgradeWorker = false
-
-Tabs.TreeUpgrade:AddParagraph({
-    Title = "Upgrade automático de árvore",
-    Content = "Tenta comprar todos os upgrades da lista continuamente."
-})
-
-Tabs.TreeUpgrade:AddToggle("TreeUpgradeToggle", {
-    Title = "Ativar upgrades de árvore",
-    Default = false,
-
-    Callback = function(Value)
-        treeUpgradeAtivado = Value
-
-        if Value and not treeUpgradeWorker then
-            treeUpgradeWorker = true
-
-            task.spawn(function()
-                while treeUpgradeAtivado do
-
-                    for _, nome in ipairs(upgradesArvore) do
-                        if not treeUpgradeAtivado then
-                            break
-                        end
-
-                        pcall(function()
-                            BuyAppleUpgrade:InvokeServer(nome, true)
-                        end)
-
-                        task.wait(0.7)
-                    end
-
-                    task.wait(1)
-                end
-
-                treeUpgradeWorker = false
             end)
         end
     end
@@ -495,7 +405,7 @@ Tabs.Performance:AddButton({
     end
 })
 
--- Reduz também os efeitos que forem adicionados depois.
+-- Observar novos efeitos
 local function observarNovosObjetos(objeto)
     if baixoGraficoAtivo or modoAFKAtivo then
         reduzirObjeto(objeto)
@@ -558,7 +468,7 @@ BotaoAbrir.Activated:Connect(function()
     BotaoAbrir.Visible = false
 end)
 
--- Detecta quando a janela é minimizada.
+-- Detectar minimização
 task.spawn(function()
     while ScreenGui.Parent do
         pcall(function()
@@ -582,4 +492,3 @@ Fluent:Notify({
 })
 
 SaveManager:LoadAutoloadConfig()
-
