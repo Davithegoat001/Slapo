@@ -20,12 +20,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
-local PlayerGui = player:WaitForChild("PlayerGui")
-
-math.randomseed(os.clock() * 100000)
 
 --==================================================
--- JANELA PRINCIPAL
+-- CRIAÇÃO DA JANELA
 --==================================================
 
 local Window = Fluent:CreateWindow({
@@ -37,6 +34,10 @@ local Window = Fluent:CreateWindow({
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.LeftControl
 })
+
+--==================================================
+-- ABAS
+--==================================================
 
 local Tabs = {
     Main = Window:AddTab({
@@ -65,83 +66,65 @@ local Tabs = {
     })
 }
 
-local Options = Fluent.Options
+--==================================================
+-- REFERÊNCIAS DO EVENTO
+--==================================================
+
+local function encontrarAutumnEvent()
+    return workspace:FindFirstChild("Autumn Event")
+end
+
+local function encontrarMacas()
+    local pasta = workspace:FindFirstChild("AutumnApples")
+
+    if pasta then
+        return pasta
+    end
+
+    local evento = encontrarAutumnEvent()
+
+    if evento then
+        return evento:FindFirstChild("AutumnApples", true)
+    end
+
+    return nil
+end
+
+--==================================================
+-- REMOTE DE UPGRADE
+--==================================================
+
+local BuyUpgrade
+
+task.spawn(function()
+    pcall(function()
+        BuyUpgrade = ReplicatedStorage
+            :WaitForChild("Network")
+            :WaitForChild("AppleService")
+            :WaitForChild("RF")
+            :WaitForChild("BuyUpgrade")
+    end)
+end)
 
 --==================================================
 -- MAIN
 --==================================================
 
 Tabs.Main:AddParagraph({
-    Title = "Apple Farm",
-    Content = "Painel de automação e upgrades."
-})
-
-Tabs.Main:AddButton({
-    Title = "Notificação de teste",
-    Description = "Testar o sistema de notificações.",
-
-    Callback = function()
-        Fluent:Notify({
-            Title = "Apple Farm",
-            Content = "Interface funcionando!",
-            Duration = 3
-        })
-    end
-})
-
-Tabs.Main:AddToggle("MainToggle", {
-    Title = "Exemplo de toggle",
-    Default = false,
-
-    Callback = function(Value)
-        print("Toggle Main:", Value)
-    end
-})
-
-Tabs.Main:AddSlider("MainSlider", {
-    Title = "Velocidade de exemplo",
-    Default = 1,
-    Min = 1,
-    Max = 10,
-    Rounding = 0,
-
-    Callback = function(Value)
-        print("Valor:", Value)
-    end
-})
-
-Tabs.Main:AddDropdown("MainDropdown", {
-    Title = "Exemplo de seleção",
-    Values = {"Opção 1", "Opção 2", "Opção 3"},
-    Default = "Opção 1",
-
-    Callback = function(Value)
-        print("Selecionado:", Value)
-    end
-})
-
-Tabs.Main:AddInput("MainInput", {
-    Title = "Texto de exemplo",
-    Default = "",
-    Placeholder = "Digite algo...",
-
-    Callback = function(Value)
-        print("Texto:", Value)
-    end
+    Title = "Obs:",
+    Content = "Farm de maçã e upgrade só funciona depois que você entrar no portal."
 })
 
 --==================================================
 -- FARM DE MAÇÃ
 --==================================================
 
-local pastaMacas = workspace:WaitForChild("AutumnApples")
-
 local farmAtivado = false
 local farmWorker = false
 
 Tabs.Farm:AddParagraph({
-    Title = "Farm automático",
-    Content = "Teleporta o personagem até as maçãs encontradas."
+    Title = "Farm de maçã",
+    Content = "Só funciona se entrar no portal que leva a ilha."
 })
 
 Tabs.Farm:AddToggle("FarmToggle", {
@@ -156,6 +139,13 @@ Tabs.Farm:AddToggle("FarmToggle", {
 
             task.spawn(function()
                 while farmAtivado do
+                    local pastaMacas = encontrarMacas()
+
+                    if not pastaMacas then
+                        task.wait(1)
+                        continue
+                    end
+
                     local encontrouMaca = false
 
                     for _, maca in ipairs(pastaMacas:GetChildren()) do
@@ -194,14 +184,8 @@ Tabs.Farm:AddToggle("FarmToggle", {
 })
 
 --==================================================
--- UPGRADE AUTOMÁTICO DA TABELA
+-- UPGRADE DE MAÇÃ
 --==================================================
-
-local BuyUpgrade = ReplicatedStorage
-    :WaitForChild("Network")
-    :WaitForChild("AppleService")
-    :WaitForChild("RF")
-    :WaitForChild("BuyUpgrade")
 
 local upgradesMacas = {
     {"Juicy Apples", 75},
@@ -223,8 +207,8 @@ local upgradeAtivado = false
 local upgradeWorker = false
 
 Tabs.Upgrade:AddParagraph({
-    Title = "Upgrade da tabela de maçã",
-    Content = "Escolhe upgrades aleatórios da tabela e tenta comprar continuamente."
+    Title = "Upgrade automático",
+    Content = "Só funciona se entrar no portal que leva a ilha."
 })
 
 Tabs.Upgrade:AddToggle("UpgradeToggle", {
@@ -239,25 +223,22 @@ Tabs.Upgrade:AddToggle("UpgradeToggle", {
 
             task.spawn(function()
                 while upgradeAtivado do
+                    if BuyUpgrade then
+                        local indice = math.random(1, #upgradesMacas)
+                        local upgrade = upgradesMacas[indice]
+                        local nome = upgrade[1]
 
-                    -- Escolher upgrade aleatório
-                    local indice = math.random(1, #upgradesMacas)
-                    local upgrade = upgradesMacas[indice]
+                        local sucesso, resultado = pcall(function()
+                            return BuyUpgrade:InvokeServer(nome, true)
+                        end)
 
-                    local nome = upgrade[1]
-                    local maximo = upgrade[2]
-
-                    -- Tentar comprar um nível
-                    local sucesso, resultado = pcall(function()
-                        return BuyUpgrade:InvokeServer(nome, true)
-                    end)
-
-                    if not sucesso then
-                        warn("Erro no upgrade:", nome, resultado)
-                    elseif resultado == false then
-                        print("Upgrade não comprado:", nome)
-                    else
-                        print("Tentativa de upgrade:", nome)
+                        if not sucesso then
+                            warn("Erro no upgrade:", nome, resultado)
+                        elseif resultado == false then
+                            print("Upgrade não comprado:", nome)
+                        else
+                            print("Tentativa de upgrade:", nome)
+                        end
                     end
 
                     task.wait(0.7)
@@ -273,74 +254,68 @@ Tabs.Upgrade:AddToggle("UpgradeToggle", {
 -- DESEMPENHO
 --==================================================
 
-local baixoGraficoAtivo = false
-local modoAFKAtivo = false
+local graficosBaixos = false
+local modoAFK = false
+local propriedadesOriginais = {}
 
-local valoresOriginais = {}
-
-local function alterarPropriedade(objeto, propriedade, valor)
-    if not valoresOriginais[objeto] then
-        valoresOriginais[objeto] = {}
+local function salvarPropriedade(objeto, propriedade)
+    if not propriedadesOriginais[objeto] then
+        propriedadesOriginais[objeto] = {}
     end
 
-    if valoresOriginais[objeto][propriedade] == nil then
-        local sucesso, original = pcall(function()
-            return objeto[propriedade]
+    if propriedadesOriginais[objeto][propriedade] == nil then
+        pcall(function()
+            propriedadesOriginais[objeto][propriedade] =
+                objeto[propriedade]
         end)
-
-        if not sucesso then
-            return
-        end
-
-        valoresOriginais[objeto][propriedade] = original
     end
-
-    pcall(function()
-        objeto[propriedade] = valor
-    end)
 end
 
-local function reduzirObjeto(objeto)
-    if objeto:IsA("ParticleEmitter") then
-        alterarPropriedade(objeto, "Enabled", false)
-
-    elseif objeto:IsA("Trail") or objeto:IsA("Beam") then
-        alterarPropriedade(objeto, "Enabled", false)
-
-    elseif objeto:IsA("Fire")
+local function alterarEfeito(objeto)
+    if objeto:IsA("ParticleEmitter")
+        or objeto:IsA("Trail")
+        or objeto:IsA("Beam")
+        or objeto:IsA("Fire")
         or objeto:IsA("Smoke")
         or objeto:IsA("Sparkles") then
 
-        alterarPropriedade(objeto, "Enabled", false)
+        salvarPropriedade(objeto, "Enabled")
 
-    elseif objeto:IsA("BloomEffect")
-        or objeto:IsA("BlurEffect")
-        or objeto:IsA("ColorCorrectionEffect")
-        or objeto:IsA("DepthOfFieldEffect")
-        or objeto:IsA("SunRaysEffect") then
+        pcall(function()
+            objeto.Enabled = false
+        end)
+    end
 
-        alterarPropriedade(objeto, "Enabled", false)
+    if objeto:IsA("PostEffect") then
+        salvarPropriedade(objeto, "Enabled")
+
+        pcall(function()
+            objeto.Enabled = false
+        end)
     end
 end
 
-local function aplicarGraficosBaixos()
-    alterarPropriedade(Lighting, "GlobalShadows", false)
-
-    pcall(function()
-        alterarPropriedade(workspace.Terrain, "Decoration", false)
-    end)
-
-    for _, objeto in ipairs(Lighting:GetDescendants()) do
-        reduzirObjeto(objeto)
+local function aplicarGraficos()
+    if not graficosBaixos and not modoAFK then
+        return
     end
 
+    pcall(function()
+        Lighting.GlobalShadows = false
+        workspace.Terrain.Decoration = false
+    end)
+
     for _, objeto in ipairs(workspace:GetDescendants()) do
-        reduzirObjeto(objeto)
+        alterarEfeito(objeto)
+    end
+
+    for _, objeto in ipairs(Lighting:GetDescendants()) do
+        alterarEfeito(objeto)
     end
 end
 
 local function restaurarGraficos()
-    for objeto, propriedades in pairs(valoresOriginais) do
+    for objeto, propriedades in pairs(propriedadesOriginais) do
         for propriedade, valor in pairs(propriedades) do
             pcall(function()
                 objeto[propriedade] = valor
@@ -348,29 +323,26 @@ local function restaurarGraficos()
         end
     end
 
-    table.clear(valoresOriginais)
-end
+    table.clear(propriedadesOriginais)
 
-local function atualizarDesempenho()
-    if baixoGraficoAtivo or modoAFKAtivo then
-        aplicarGraficosBaixos()
-    else
-        restaurarGraficos()
-    end
+    pcall(function()
+        Lighting.GlobalShadows = true
+        workspace.Terrain.Decoration = true
+    end)
 end
-
-Tabs.Performance:AddParagraph({
-    Title = "Desempenho",
-    Content = "Reduz efeitos visuais para tentar diminuir o uso de recursos."
-})
 
 Tabs.Performance:AddToggle("LowGraphics", {
     Title = "Gráficos baixos",
     Default = false,
 
     Callback = function(Value)
-        baixoGraficoAtivo = Value
-        atualizarDesempenho()
+        graficosBaixos = Value
+
+        if Value then
+            aplicarGraficos()
+        elseif not modoAFK then
+            restaurarGraficos()
+        end
     end
 })
 
@@ -379,41 +351,50 @@ Tabs.Performance:AddToggle("AFKMode", {
     Default = false,
 
     Callback = function(Value)
-        modoAFKAtivo = Value
-        atualizarDesempenho()
+        modoAFK = Value
+
+        if Value then
+            aplicarGraficos()
+        elseif not graficosBaixos then
+            restaurarGraficos()
+        end
     end
 })
 
 Tabs.Performance:AddButton({
     Title = "Restaurar gráficos",
-    Description = "Desativa os modos e restaura os efeitos alterados.",
 
     Callback = function()
-        baixoGraficoAtivo = false
-        modoAFKAtivo = false
-
-        Options.LowGraphics:SetValue(false)
-        Options.AFKMode:SetValue(false)
+        graficosBaixos = false
+        modoAFK = false
 
         restaurarGraficos()
 
         Fluent:Notify({
             Title = "Desempenho",
-            Content = "Gráficos restaurados.",
+            Content = "Configurações visuais restauradas.",
             Duration = 3
         })
     end
 })
 
--- Observar novos efeitos
-local function observarNovosObjetos(objeto)
-    if baixoGraficoAtivo or modoAFKAtivo then
-        reduzirObjeto(objeto)
-    end
-end
+--==================================================
+-- OBSERVAR NOVOS EFEITOS
+--==================================================
 
-workspace.DescendantAdded:Connect(observarNovosObjetos)
-Lighting.DescendantAdded:Connect(observarNovosObjetos)
+workspace.DescendantAdded:Connect(function(objeto)
+    if graficosBaixos or modoAFK then
+        task.wait()
+        alterarEfeito(objeto)
+    end
+end)
+
+Lighting.DescendantAdded:Connect(function(objeto)
+    if graficosBaixos or modoAFK then
+        task.wait()
+        alterarEfeito(objeto)
+    end
+end)
 
 --==================================================
 -- SETTINGS
@@ -432,8 +413,10 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 --==================================================
--- ÍCONE 🍎 PARA REABRIR A INTERFACE
+-- BOTÃO PARA REABRIR A UI
 --==================================================
+
+local PlayerGui = player:WaitForChild("PlayerGui")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AppleReopenButton"
@@ -451,14 +434,14 @@ BotaoAbrir.TextSize = 28
 BotaoAbrir.Visible = false
 BotaoAbrir.Parent = ScreenGui
 
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(1, 0)
-Corner.Parent = BotaoAbrir
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = BotaoAbrir
 
-local Stroke = Instance.new("UIStroke")
-Stroke.Thickness = 2
-Stroke.Color = Color3.fromRGB(255, 255, 255)
-Stroke.Parent = BotaoAbrir
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(255, 255, 255)
+UIStroke.Thickness = 1.5
+UIStroke.Parent = BotaoAbrir
 
 BotaoAbrir.Activated:Connect(function()
     if Window.Minimized then
@@ -468,7 +451,6 @@ BotaoAbrir.Activated:Connect(function()
     BotaoAbrir.Visible = false
 end)
 
--- Detectar minimização
 task.spawn(function()
     while ScreenGui.Parent do
         pcall(function()
@@ -487,8 +469,8 @@ Window:SelectTab(1)
 
 Fluent:Notify({
     Title = "Apple Farm",
-    Content = "Painel carregado com sucesso!",
-    Duration = 5
+    Content = "Interface carregada com sucesso!",
+    Duration = 4
 })
 
 SaveManager:LoadAutoloadConfig()
