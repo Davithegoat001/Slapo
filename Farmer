@@ -36,6 +36,56 @@ local Window = Fluent:CreateWindow({
 })
 
 --==================================================
+-- ÍCONE DE MAÇÃ PARA REABRIR A UI
+--==================================================
+
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AppleReopenButton"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 999
+ScreenGui.Parent = PlayerGui
+
+local BotaoAbrir = Instance.new("TextButton")
+BotaoAbrir.Name = "AppleButton"
+BotaoAbrir.Size = UDim2.fromOffset(60, 60)
+BotaoAbrir.Position = UDim2.new(0, 15, 0.5, -30)
+BotaoAbrir.BackgroundTransparency = 0
+BotaoAbrir.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+BotaoAbrir.BorderSizePixel = 0
+BotaoAbrir.Text = "🍎"
+BotaoAbrir.TextSize = 42
+BotaoAbrir.Visible = false
+BotaoAbrir.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = BotaoAbrir
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(255, 255, 255)
+UIStroke.Thickness = 1.5
+UIStroke.Parent = BotaoAbrir
+
+BotaoAbrir.Activated:Connect(function()
+    if Window.Minimized then
+        Window:Minimize()
+    end
+end)
+
+task.spawn(function()
+    while ScreenGui.Parent do
+        pcall(function()
+            BotaoAbrir.Visible = Window.Minimized == true
+        end)
+
+        task.wait(0.15)
+    end
+end)
+
+--==================================================
 -- ABAS
 --==================================================
 
@@ -411,55 +461,6 @@ SaveManager:SetFolder("FluentScriptHub/specific-game")
 
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
-
---==================================================
--- BOTÃO PARA REABRIR A UI
---==================================================
-
-local PlayerGui = player:WaitForChild("PlayerGui")
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AppleReopenButton"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = PlayerGui
-
-local BotaoAbrir = Instance.new("TextButton")
-BotaoAbrir.Name = "AppleButton"
-BotaoAbrir.Size = UDim2.fromOffset(55, 55)
-BotaoAbrir.Position = UDim2.new(0, 15, 0.5, -27)
-BotaoAbrir.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-BotaoAbrir.Text = "🍎"
-BotaoAbrir.TextSize = 28
-BotaoAbrir.Visible = false
-BotaoAbrir.Parent = ScreenGui
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(1, 0)
-UICorner.Parent = BotaoAbrir
-
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(255, 255, 255)
-UIStroke.Thickness = 1.5
-UIStroke.Parent = BotaoAbrir
-
-BotaoAbrir.Activated:Connect(function()
-    if Window.Minimized then
-        Window:Minimize()
-    end
-
-    BotaoAbrir.Visible = false
-end)
-
-task.spawn(function()
-    while ScreenGui.Parent do
-        pcall(function()
-            BotaoAbrir.Visible = Window.Minimized == true
-        end)
-
-        task.wait(0.2)
-    end
-end)
 
 --==================================================
 -- FINALIZAÇÃO
