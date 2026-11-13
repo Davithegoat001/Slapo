@@ -57,11 +57,15 @@ local BotaoAbrir = Instance.new("ImageButton")
 BotaoAbrir.Name = "TarotClubButton"
 BotaoAbrir.Size = UDim2.fromOffset(60, 60)
 BotaoAbrir.Position = UDim2.new(0, 15, 0.5, -30)
+
 BotaoAbrir.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 BotaoAbrir.BackgroundTransparency = 0
 BotaoAbrir.BorderSizePixel = 0
-BotaoAbrir.Image = "rbxassetid://110071391795024"
+
+BotaoAbrir.Image = "https://www.roblox.com/asset/?id=110071391795024"
+BotaoAbrir.ImageTransparency = 0
 BotaoAbrir.ScaleType = Enum.ScaleType.Crop
+
 BotaoAbrir.Visible = false
 BotaoAbrir.Active = true
 BotaoAbrir.Parent = ScreenGui
@@ -76,7 +80,7 @@ UIStroke.Thickness = 1.5
 UIStroke.Parent = BotaoAbrir
 
 --==================================================
--- MOVIMENTAR O ÍCONE
+-- MOVIMENTAÇÃO DO ÍCONE
 --==================================================
 
 local dragging = false
@@ -148,7 +152,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 --==================================================
--- MOSTRAR ÍCONE QUANDO A UI FOR MINIMIZADA
+-- APARECER QUANDO MINIMIZAR
 --==================================================
 
 task.spawn(function()
@@ -361,7 +365,6 @@ Tabs.Farm:AddToggle("UpgradeTabela", {
 --==================================================
 
 local graficosBaixos = false
-
 local propriedadesOriginais = {}
 
 local function salvarPropriedade(objeto, propriedade, valor)
@@ -438,7 +441,7 @@ Tabs.Desempenho:AddToggle("ModoAFK", {
     Default = false,
 
     Callback = function(Value)
-        -- Mantido como opção visual.
+        -- Opção mantida na interface.
     end
 })
 
