@@ -80,6 +80,63 @@ UIStroke.Thickness = 1.5
 UIStroke.Parent = BotaoAbrir
 
 --==================================================
+-- CORES DO ÍCONE CONFORME O TEMA
+--==================================================
+
+local function atualizarCoresIcone(tema)
+
+    local cores = {
+        Dark = {
+            Fundo = Color3.fromRGB(0, 0, 0),
+            Contorno = Color3.fromRGB(255, 255, 255)
+        },
+
+        Light = {
+            Fundo = Color3.fromRGB(245, 245, 245),
+            Contorno = Color3.fromRGB(35, 35, 35)
+        },
+
+        Aqua = {
+            Fundo = Color3.fromRGB(0, 65, 75),
+            Contorno = Color3.fromRGB(90, 220, 235)
+        },
+
+        Amethyst = {
+            Fundo = Color3.fromRGB(65, 30, 95),
+            Contorno = Color3.fromRGB(195, 145, 255)
+        },
+
+        Rose = {
+            Fundo = Color3.fromRGB(100, 35, 55),
+            Contorno = Color3.fromRGB(255, 145, 180)
+        }
+    }
+
+    local selecionado = cores[tema] or cores.Dark
+
+    BotaoAbrir.BackgroundColor3 = selecionado.Fundo
+    UIStroke.Color = selecionado.Contorno
+end
+
+atualizarCoresIcone("Dark")
+
+--==================================================
+-- DETECTAR MUDANÇA DE TEMA
+--==================================================
+
+local SetThemeOriginal = Fluent.SetTheme
+
+if SetThemeOriginal then
+    Fluent.SetTheme = function(self, tema, ...)
+        local resultado = SetThemeOriginal(self, tema, ...)
+
+        atualizarCoresIcone(tema)
+
+        return resultado
+    end
+end
+
+--==================================================
 -- MOVIMENTAÇÃO DO ÍCONE
 --==================================================
 
