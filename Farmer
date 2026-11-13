@@ -1,6 +1,19 @@
 
 --==================================================
--- CARREGAMENTO DO FLUENT
+-- TAROT CLUB
+-- Feito por um Goat
+--==================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+--==================================================
+-- FLUENT
 --==================================================
 
 local Fluent = loadstring(game:HttpGet(
@@ -15,19 +28,13 @@ local InterfaceManager = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"
 ))()
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Lighting = game:GetService("Lighting")
-
-local player = Players.LocalPlayer
-
 --==================================================
--- CRIAÇÃO DA JANELA
+-- JANELA PRINCIPAL
 --==================================================
 
 local Window = Fluent:CreateWindow({
-    Title = "Apple Farm",
-    SubTitle = "Feito por Davi",
+    Title = "Tarot club",
+    SubTitle = "Feito por um Goat",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true,
@@ -36,28 +43,27 @@ local Window = Fluent:CreateWindow({
 })
 
 --==================================================
--- ÍCONE DE MAÇÃ PARA REABRIR A UI
+-- ÍCONE PARA REABRIR A UI
 --==================================================
 
-local PlayerGui = player:WaitForChild("PlayerGui")
-
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AppleReopenButton"
+ScreenGui.Name = "TarotClubReopenButton"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = PlayerGui
 
-local BotaoAbrir = Instance.new("TextButton")
-BotaoAbrir.Name = "AppleButton"
+local BotaoAbrir = Instance.new("ImageButton")
+BotaoAbrir.Name = "TarotClubButton"
 BotaoAbrir.Size = UDim2.fromOffset(60, 60)
 BotaoAbrir.Position = UDim2.new(0, 15, 0.5, -30)
-BotaoAbrir.BackgroundTransparency = 0
 BotaoAbrir.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+BotaoAbrir.BackgroundTransparency = 0
 BotaoAbrir.BorderSizePixel = 0
-BotaoAbrir.Text = "🍎"
-BotaoAbrir.TextSize = 42
+BotaoAbrir.Image = "rbxassetid://110071391795024"
+BotaoAbrir.ScaleType = Enum.ScaleType.Crop
 BotaoAbrir.Visible = false
+BotaoAbrir.Active = true
 BotaoAbrir.Parent = ScreenGui
 
 local UICorner = Instance.new("UICorner")
@@ -69,11 +75,81 @@ UIStroke.Color = Color3.fromRGB(255, 255, 255)
 UIStroke.Thickness = 1.5
 UIStroke.Parent = BotaoAbrir
 
-BotaoAbrir.Activated:Connect(function()
-    if Window.Minimized then
-        Window:Minimize()
+--==================================================
+-- MOVIMENTAR O ÍCONE
+--==================================================
+
+local dragging = false
+local dragInput = nil
+local dragStart = nil
+local startPosition = nil
+local moved = false
+
+local function atualizarPosicao(input)
+    local delta = input.Position - dragStart
+
+    if math.abs(delta.X) > 5 or math.abs(delta.Y) > 5 then
+        moved = true
+    end
+
+    BotaoAbrir.Position = UDim2.new(
+        startPosition.X.Scale,
+        startPosition.X.Offset + delta.X,
+        startPosition.Y.Scale,
+        startPosition.Y.Offset + delta.Y
+    )
+end
+
+BotaoAbrir.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        dragging = true
+        moved = false
+        dragStart = input.Position
+        startPosition = BotaoAbrir.Position
+
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
     end
 end)
+
+BotaoAbrir.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input == dragInput then
+        atualizarPosicao(input)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        if dragging then
+            dragging = false
+
+            if not moved then
+                if Window.Minimized then
+                    Window:Minimize()
+                end
+            end
+
+            dragInput = nil
+        end
+    end
+end)
+
+--==================================================
+-- MOSTRAR ÍCONE QUANDO A UI FOR MINIMIZADA
+--==================================================
 
 task.spawn(function()
     while ScreenGui.Parent do
@@ -96,16 +172,11 @@ local Tabs = {
     }),
 
     Farm = Window:AddTab({
-        Title = "Farm de maçã",
+        Title = "Farm",
         Icon = "apple"
     }),
 
-    Upgrade = Window:AddTab({
-        Title = "Upgrade de maçã",
-        Icon = "trending-up"
-    }),
-
-    Performance = Window:AddTab({
+    Desempenho = Window:AddTab({
         Title = "Desempenho",
         Icon = "gauge"
     }),
@@ -115,46 +186,6 @@ local Tabs = {
         Icon = "settings"
     })
 }
-
---==================================================
--- REFERÊNCIAS DO EVENTO
---==================================================
-
-local function encontrarAutumnEvent()
-    return workspace:FindFirstChild("Autumn Event")
-end
-
-local function encontrarMacas()
-    local pasta = workspace:FindFirstChild("AutumnApples")
-
-    if pasta then
-        return pasta
-    end
-
-    local evento = encontrarAutumnEvent()
-
-    if evento then
-        return evento:FindFirstChild("AutumnApples", true)
-    end
-
-    return nil
-end
-
---==================================================
--- REMOTE DE UPGRADE
---==================================================
-
-local BuyUpgrade
-
-task.spawn(function()
-    pcall(function()
-        BuyUpgrade = ReplicatedStorage
-            :WaitForChild("Network")
-            :WaitForChild("AppleService")
-            :WaitForChild("RF")
-            :WaitForChild("BuyUpgrade")
-    end)
-end)
 
 --==================================================
 -- MAIN
@@ -169,73 +200,92 @@ Tabs.Main:AddParagraph({
 -- FARM DE MAÇÃ
 --==================================================
 
-local farmAtivado = false
-local farmWorker = false
-
 Tabs.Farm:AddParagraph({
-    Title = "Farm de maçã",
+    Title = "Coletar maçãs",
     Content = "Só funciona se entrar no portal que leva a ilha."
 })
 
-Tabs.Farm:AddToggle("FarmToggle", {
-    Title = "Ativar farm de maçã",
+local farmAtivado = false
+local farmWorker = false
+
+local function encontrarMacas()
+    local pasta = workspace:FindFirstChild("AutumnApples")
+
+    if pasta then
+        return pasta
+    end
+
+    local evento = workspace:FindFirstChild("Autumn Event")
+
+    if evento then
+        return evento:FindFirstChild("AutumnApples", true)
+    end
+
+    return nil
+end
+
+local function iniciarFarm()
+    if farmWorker then
+        return
+    end
+
+    farmWorker = true
+
+    task.spawn(function()
+        while farmAtivado do
+            local pasta = encontrarMacas()
+            local personagem = player.Character
+            local root = personagem and personagem:FindFirstChild("HumanoidRootPart")
+
+            if pasta and root then
+                for _, maca in ipairs(pasta:GetChildren()) do
+                    if not farmAtivado then
+                        break
+                    end
+
+                    if maca:IsA("Model") then
+                        pcall(function()
+                            personagem:PivotTo(
+                                maca:GetPivot() + Vector3.new(0, 3, 0)
+                            )
+                        end)
+
+                        task.wait(0.6)
+                    end
+                end
+            else
+                task.wait(1)
+            end
+
+            task.wait(0.1)
+        end
+
+        farmWorker = false
+    end)
+end
+
+Tabs.Farm:AddToggle("Coletar", {
+    Title = "Coletar",
+    Description = "Ativa a coleta automática de maçãs.",
     Default = false,
 
     Callback = function(Value)
         farmAtivado = Value
 
-        if Value and not farmWorker then
-            farmWorker = true
-
-            task.spawn(function()
-                while farmAtivado do
-                    local pastaMacas = encontrarMacas()
-
-                    if not pastaMacas then
-                        task.wait(1)
-                        continue
-                    end
-
-                    local encontrouMaca = false
-
-                    for _, maca in ipairs(pastaMacas:GetChildren()) do
-                        if not farmAtivado then
-                            break
-                        end
-
-                        if maca:IsA("Model") and maca.Parent == pastaMacas then
-                            encontrouMaca = true
-
-                            local personagem = player.Character
-                                or player.CharacterAdded:Wait()
-
-                            local root = personagem:FindFirstChild("HumanoidRootPart")
-
-                            if root then
-                                pcall(function()
-                                    root.CFrame = maca:GetPivot()
-                                        + Vector3.new(0, 3, 0)
-                                end)
-                            end
-
-                            task.wait(0.6)
-                        end
-                    end
-
-                    if not encontrouMaca then
-                        task.wait(0.8)
-                    end
-                end
-
-                farmWorker = false
-            end)
+        if Value then
+            iniciarFarm()
         end
     end
 })
 
 --==================================================
--- UPGRADE DE MAÇÃ
+-- UPGRADE AUTOMÁTICO DA TABELA
 --==================================================
+
+Tabs.Farm:AddParagraph({
+    Title = "Upgrade da tabela",
+    Content = "Ativa upgrades aleatórios automaticamente."
+})
 
 local upgradesMacas = {
     {"Juicy Apples", 75},
@@ -256,46 +306,52 @@ local upgradesMacas = {
 local upgradeAtivado = false
 local upgradeWorker = false
 
-Tabs.Upgrade:AddParagraph({
-    Title = "Upgrade automático",
-    Content = "Só funciona se entrar no portal que leva a ilha."
-})
+local BuyUpgrade
 
-Tabs.Upgrade:AddToggle("UpgradeToggle", {
+task.spawn(function()
+    local network = ReplicatedStorage:WaitForChild("Network")
+    local appleService = network:WaitForChild("AppleService")
+    local rf = appleService:WaitForChild("RF")
+
+    BuyUpgrade = rf:WaitForChild("BuyUpgrade")
+end)
+
+local function iniciarUpgrade()
+    if upgradeWorker then
+        return
+    end
+
+    upgradeWorker = true
+
+    task.spawn(function()
+        while upgradeAtivado do
+            if BuyUpgrade then
+                local escolhido = upgradesMacas[
+                    math.random(1, #upgradesMacas)
+                ]
+
+                pcall(function()
+                    BuyUpgrade:InvokeServer(escolhido[1], true)
+                end)
+            end
+
+            task.wait(0.7)
+        end
+
+        upgradeWorker = false
+    end)
+end
+
+Tabs.Farm:AddToggle("UpgradeTabela", {
     Title = "Upgrade automático da tabela",
+    Description = "Faz upgrades aleatórios automaticamente.",
     Default = false,
 
     Callback = function(Value)
         upgradeAtivado = Value
 
-        if Value and not upgradeWorker then
-            upgradeWorker = true
-
-            task.spawn(function()
-                while upgradeAtivado do
-                    if BuyUpgrade then
-                        local indice = math.random(1, #upgradesMacas)
-                        local upgrade = upgradesMacas[indice]
-                        local nome = upgrade[1]
-
-                        local sucesso, resultado = pcall(function()
-                            return BuyUpgrade:InvokeServer(nome, true)
-                        end)
-
-                        if not sucesso then
-                            warn("Erro no upgrade:", nome, resultado)
-                        elseif resultado == false then
-                            print("Upgrade não comprado:", nome)
-                        else
-                            print("Tentativa de upgrade:", nome)
-                        end
-                    end
-
-                    task.wait(0.7)
-                end
-
-                upgradeWorker = false
-            end)
+        if Value then
+            iniciarUpgrade()
         end
     end
 })
@@ -305,11 +361,11 @@ Tabs.Upgrade:AddToggle("UpgradeToggle", {
 --==================================================
 
 local graficosBaixos = false
-local modoAFK = false
+
 local propriedadesOriginais = {}
 
-local function salvarPropriedade(objeto, propriedade)
-    if not propriedadesOriginais[objeto] then
+local function salvarPropriedade(objeto, propriedade, valor)
+    if propriedadesOriginais[objeto] == nil then
         propriedadesOriginais[objeto] = {}
     end
 
@@ -319,132 +375,97 @@ local function salvarPropriedade(objeto, propriedade)
                 objeto[propriedade]
         end)
     end
+
+    pcall(function()
+        objeto[propriedade] = valor
+    end)
 end
 
-local function alterarEfeito(objeto)
+local function aplicarGraficosBaixos(objeto)
     if objeto:IsA("ParticleEmitter")
-        or objeto:IsA("Trail")
-        or objeto:IsA("Beam")
-        or objeto:IsA("Fire")
-        or objeto:IsA("Smoke")
-        or objeto:IsA("Sparkles") then
+    or objeto:IsA("Trail")
+    or objeto:IsA("Beam")
+    or objeto:IsA("Fire")
+    or objeto:IsA("Smoke")
+    or objeto:IsA("Sparkles") then
 
-        salvarPropriedade(objeto, "Enabled")
+        salvarPropriedade(objeto, "Enabled", false)
 
-        pcall(function()
-            objeto.Enabled = false
-        end)
-    end
+    elseif objeto:IsA("BasePart") then
 
-    if objeto:IsA("PostEffect") then
-        salvarPropriedade(objeto, "Enabled")
+        salvarPropriedade(objeto, "Material", Enum.Material.SmoothPlastic)
+        salvarPropriedade(objeto, "CastShadow", false)
 
-        pcall(function()
-            objeto.Enabled = false
-        end)
+    elseif objeto:IsA("Decal") or objeto:IsA("Texture") then
+
+        salvarPropriedade(objeto, "Transparency", 1)
     end
 end
 
-local function aplicarGraficos()
-    if not graficosBaixos and not modoAFK then
-        return
-    end
+local function ativarGraficosBaixos()
+    salvarPropriedade(Lighting, "GlobalShadows", false)
+    salvarPropriedade(Lighting, "FogEnd", 100000)
 
-    pcall(function()
-        Lighting.GlobalShadows = false
-        workspace.Terrain.Decoration = false
-    end)
-
-    for _, objeto in ipairs(workspace:GetDescendants()) do
-        alterarEfeito(objeto)
-    end
-
-    for _, objeto in ipairs(Lighting:GetDescendants()) do
-        alterarEfeito(objeto)
+    for _, objeto in ipairs(game:GetDescendants()) do
+        aplicarGraficosBaixos(objeto)
     end
 end
 
-local function restaurarGraficos()
-    for objeto, propriedades in pairs(propriedadesOriginais) do
-        for propriedade, valor in pairs(propriedades) do
-            pcall(function()
-                objeto[propriedade] = valor
-            end)
-        end
+game.DescendantAdded:Connect(function(objeto)
+    if graficosBaixos then
+        task.wait()
+        aplicarGraficosBaixos(objeto)
     end
+end)
 
-    table.clear(propriedadesOriginais)
-
-    pcall(function()
-        Lighting.GlobalShadows = true
-        workspace.Terrain.Decoration = true
-    end)
-end
-
-Tabs.Performance:AddToggle("LowGraphics", {
+Tabs.Desempenho:AddToggle("GraficosBaixos", {
     Title = "Gráficos baixos",
+    Description = "Reduz efeitos visuais para melhorar o desempenho.",
     Default = false,
 
     Callback = function(Value)
         graficosBaixos = Value
 
         if Value then
-            aplicarGraficos()
-        elseif not modoAFK then
-            restaurarGraficos()
+            ativarGraficosBaixos()
         end
     end
 })
 
-Tabs.Performance:AddToggle("AFKMode", {
+Tabs.Desempenho:AddToggle("ModoAFK", {
     Title = "Modo AFK de baixo consumo",
+    Description = "Ativa o modo de baixo consumo.",
     Default = false,
 
     Callback = function(Value)
-        modoAFK = Value
-
-        if Value then
-            aplicarGraficos()
-        elseif not graficosBaixos then
-            restaurarGraficos()
-        end
+        -- Mantido como opção visual.
     end
 })
 
-Tabs.Performance:AddButton({
+Tabs.Desempenho:AddButton({
     Title = "Restaurar gráficos",
+    Description = "Restaura as propriedades visuais salvas.",
 
     Callback = function()
         graficosBaixos = false
-        modoAFK = false
 
-        restaurarGraficos()
+        for objeto, propriedades in pairs(propriedadesOriginais) do
+            for propriedade, valorOriginal in pairs(propriedades) do
+                pcall(function()
+                    objeto[propriedade] = valorOriginal
+                end)
+            end
+        end
+
+        propriedadesOriginais = {}
 
         Fluent:Notify({
-            Title = "Desempenho",
-            Content = "Configurações visuais restauradas.",
+            Title = "Tarot club",
+            Content = "Restauração dos gráficos concluída.",
             Duration = 3
         })
     end
 })
-
---==================================================
--- OBSERVAR NOVOS EFEITOS
---==================================================
-
-workspace.DescendantAdded:Connect(function(objeto)
-    if graficosBaixos or modoAFK then
-        task.wait()
-        alterarEfeito(objeto)
-    end
-end)
-
-Lighting.DescendantAdded:Connect(function(objeto)
-    if graficosBaixos or modoAFK then
-        task.wait()
-        alterarEfeito(objeto)
-    end
-end)
 
 --==================================================
 -- SETTINGS
@@ -469,9 +490,7 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 
 Fluent:Notify({
-    Title = "Apple Farm",
-    Content = "Interface carregada com sucesso!",
+    Title = "Tarot club",
+    Content = "Interface carregada!",
     Duration = 4
 })
-
-SaveManager:LoadAutoloadConfig()
