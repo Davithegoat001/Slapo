@@ -38,6 +38,13 @@ local BuyUpgrade = ReplicatedStorage
     :WaitForChild("BuyUpgrade")
 
 --==================================================
+-- CONFIGURAÇÕES
+--==================================================
+
+local INTERVALO_COLETA = 0.6
+local INTERVALO_UPGRADE = 2.5
+
+--==================================================
 -- CONFIGURAÇÃO DA JANELA
 --==================================================
 
@@ -89,13 +96,6 @@ Tabs.Main:AddParagraph({
 })
 
 --==================================================
--- FARM DE MAÇÃ
---==================================================
-
-local farmAtivado = false
-local farmRunId = 0
-
---==================================================
 -- ENCONTRAR PASTA DAS MAÇÃS
 --==================================================
 
@@ -114,12 +114,14 @@ local function encontrarMacas()
     end
 
     return nil
-
 end
 
 --==================================================
--- INICIAR COLETA
+-- FARM DE MAÇÃ
 --==================================================
+
+local farmAtivado = false
+local farmRunId = 0
 
 local function iniciarFarm()
 
@@ -129,25 +131,24 @@ local function iniciarFarm()
 
     task.spawn(function()
 
-        -- AGUARDAR A PASTA DAS MAÇÃS
-
         local pastaMacas = encontrarMacas()
 
+        -- Aguarda a pasta aparecer.
         while farmAtivado
         and meuRun == farmRunId
         and not pastaMacas do
 
             task.wait(1)
-
             pastaMacas = encontrarMacas()
 
         end
 
-        -- COLETA CONTÍNUA
-
+        -- Coleta contínua.
         while farmAtivado and meuRun == farmRunId do
 
-            pastaMacas = encontrarMacas()
+            if not pastaMacas or not pastaMacas.Parent then
+                pastaMacas = encontrarMacas()
+            end
 
             if pastaMacas then
 
@@ -157,13 +158,13 @@ local function iniciarFarm()
                         break
                     end
 
-                    if maca:IsA("Model") then
+                    if maca:IsA("Model") and maca.Parent then
 
                         local personagem = Player.Character
 
                         if personagem and personagem.Parent then
 
-                            local sucesso, erro = pcall(function()
+                            pcall(function()
 
                                 personagem:PivotTo(
                                     maca:GetPivot() + Vector3.new(0, 3, 0)
@@ -171,13 +172,9 @@ local function iniciarFarm()
 
                             end)
 
-                            if not sucesso then
-                                warn("Erro na coleta:", erro)
-                            end
-
                         end
 
-                        task.wait(0.6)
+                        task.wait(INTERVALO_COLETA)
 
                     end
 
@@ -188,6 +185,8 @@ local function iniciarFarm()
                 task.wait(1)
 
             end
+
+            task.wait(0.2)
 
         end
 
@@ -210,13 +209,9 @@ Options.FarmMacas:OnChanged(function()
     farmAtivado = Options.FarmMacas.Value
 
     if farmAtivado then
-
         iniciarFarm()
-
     else
-
         farmRunId += 1
-
     end
 
 end)
@@ -226,7 +221,6 @@ end)
 --==================================================
 
 local upgradesMacas = {
-
     {"Juicy Apples", 75},
     {"Faster Growth", 30},
     {"Bigger Harvest", 30},
@@ -240,7 +234,6 @@ local upgradesMacas = {
     {"Mega Apples", 25},
     {"Apple Frenzy", 20},
     {"Orchard Mastery", 20}
-
 }
 
 --==================================================
@@ -274,7 +267,7 @@ local function iniciarUpgrade()
                 warn("Erro no upgrade:", erro)
             end
 
-            task.wait(0.7)
+            task.wait(INTERVALO_UPGRADE)
 
         end
 
@@ -297,13 +290,9 @@ Options.UpgradeTabela:OnChanged(function()
     upgradeAtivado = Options.UpgradeTabela.Value
 
     if upgradeAtivado then
-
         iniciarUpgrade()
-
     else
-
         upgradeRunId += 1
-
     end
 
 end)
@@ -315,6 +304,9 @@ end)
 local graficosBaixos = false
 local propriedadesOriginais = {}
 local conexaoDescendant
+
+local sombrasOriginais = Lighting.GlobalShadows
+local nevoaOriginal = Lighting.FogEnd
 
 --==================================================
 -- GUARDAR PROPRIEDADES
@@ -410,8 +402,8 @@ local function restaurarGraficos()
     propriedadesOriginais = {}
 
     pcall(function()
-        Lighting.GlobalShadows = true
-        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = sombrasOriginais
+        Lighting.FogEnd = nevoaOriginal
     end)
 
 end
@@ -423,9 +415,7 @@ end
 local function ativarGraficosBaixos()
 
     for _, objeto in ipairs(game:GetDescendants()) do
-
         aplicarGraficosBaixos(objeto)
-
     end
 
     Lighting.GlobalShadows = false
@@ -460,9 +450,7 @@ Options.GraficosBaixos:OnChanged(function()
     graficosBaixos = Options.GraficosBaixos.Value
 
     if graficosBaixos then
-
         ativarGraficosBaixos()
-
     else
 
         if conexaoDescendant then
@@ -533,7 +521,7 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 --==================================================
--- ÍCONE DE IMAGEM PARA REABRIR A UI
+-- ÍCONE PARA REABRIR A UI
 --==================================================
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -550,10 +538,7 @@ BotaoAbrir.Size = UDim2.fromOffset(60, 60)
 BotaoAbrir.Position = UDim2.new(0, 15, 0.5, -30)
 BotaoAbrir.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 BotaoAbrir.BackgroundTransparency = 0
-
--- ID DIRETO DO ASSET DA IMAGEM
 BotaoAbrir.Image = "rbxassetid://110071391795024"
-
 BotaoAbrir.ImageTransparency = 0
 BotaoAbrir.ScaleType = Enum.ScaleType.Fit
 BotaoAbrir.Visible = false
@@ -617,26 +602,6 @@ local function atualizarCoresIcone(tema)
 end
 
 atualizarCoresIcone("Dark")
-
---==================================================
--- ATUALIZAR TEMA DO ÍCONE
---==================================================
-
-local SetThemeOriginal = Fluent.SetTheme
-
-if SetThemeOriginal then
-
-    Fluent.SetTheme = function(self, tema, ...)
-
-        local resultado = SetThemeOriginal(self, tema, ...)
-
-        atualizarCoresIcone(tema)
-
-        return resultado
-
-    end
-
-end
 
 --==================================================
 -- ARRASTAR ÍCONE
@@ -730,7 +695,7 @@ task.spawn(function()
 
         BotaoAbrir.Visible = Window.Minimized == true
 
-        task.wait(0.15)
+        task.wait(0.2)
 
     end
 
