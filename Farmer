@@ -1,19 +1,43 @@
 
 --==================================================
--- CARREGAR FLUENT E ADDONS
+-- CARREGAR FLUENT
 --==================================================
 
-local Fluent = loadstring(game:HttpGet(
-    "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
-))()
+local sucessoFluent, Fluent = pcall(function()
+    return loadstring(game:HttpGet(
+        "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
+    ))()
+end)
 
-local SaveManager = loadstring(game:HttpGet(
+if not sucessoFluent or not Fluent then
+    warn("Erro ao carregar Fluent:", Fluent)
+    return
+end
+
+--==================================================
+-- CARREGAR ADDONS
+--==================================================
+
+local function carregarAddon(url)
+    local sucesso, resultado = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+
+    if sucesso then
+        return resultado
+    end
+
+    warn("Erro ao carregar addon:", resultado)
+    return nil
+end
+
+local SaveManager = carregarAddon(
     "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"
-))()
+)
 
-local InterfaceManager = loadstring(game:HttpGet(
+local InterfaceManager = carregarAddon(
     "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"
-))()
+)
 
 --==================================================
 -- SERVIÇOS
@@ -27,25 +51,19 @@ local Lighting = game:GetService("Lighting")
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
---==================================================
--- REMOTE DE UPGRADES
---==================================================
-
-local BuyUpgrade = ReplicatedStorage
-    :WaitForChild("Network")
-    :WaitForChild("AppleService")
-    :WaitForChild("RF")
-    :WaitForChild("BuyUpgrade")
+local Network = ReplicatedStorage:WaitForChild("Network")
 
 --==================================================
 -- CONFIGURAÇÕES
 --==================================================
 
 local INTERVALO_COLETA = 0.6
-local INTERVALO_UPGRADE = 2.5
+local INTERVALO_UPGRADE = 0.3
+local INTERVALO_REBIRTH = 3
+local INTERVALO_UPGRADE_REBIRTH = 3
 
 --==================================================
--- CONFIGURAÇÃO DA JANELA
+-- CRIAR JANELA
 --==================================================
 
 local Window = Fluent:CreateWindow({
@@ -96,6 +114,45 @@ Tabs.Main:AddParagraph({
 })
 
 --==================================================
+-- ENCONTRAR REMOTES
+--==================================================
+
+local function encontrarRemote(caminho)
+    local atual = ReplicatedStorage
+
+    for _, nome in ipairs(caminho) do
+        atual = atual:FindFirstChild(nome)
+
+        if not atual then
+            return nil
+        end
+    end
+
+    return atual
+end
+
+local BuyUpgrade = encontrarRemote({
+    "Network",
+    "AppleService",
+    "RF",
+    "BuyUpgrade"
+})
+
+local Rebirth = encontrarRemote({
+    "Network",
+    "AppleRebirthService",
+    "RF",
+    "Rebirth"
+})
+
+local BuyRebirthUpgrade = encontrarRemote({
+    "Network",
+    "AppleRebirthService",
+    "RF",
+    "BuyUpgrade"
+})
+
+--==================================================
 -- ENCONTRAR PASTA DAS MAÇÃS
 --==================================================
 
@@ -126,14 +183,12 @@ local farmRunId = 0
 local function iniciarFarm()
 
     farmRunId += 1
-
     local meuRun = farmRunId
 
     task.spawn(function()
 
         local pastaMacas = encontrarMacas()
 
-        -- Aguarda a pasta aparecer.
         while farmAtivado
         and meuRun == farmRunId
         and not pastaMacas do
@@ -143,7 +198,6 @@ local function iniciarFarm()
 
         end
 
-        -- Coleta contínua.
         while farmAtivado and meuRun == farmRunId do
 
             if not pastaMacas or not pastaMacas.Parent then
@@ -163,15 +217,11 @@ local function iniciarFarm()
                         local personagem = Player.Character
 
                         if personagem and personagem.Parent then
-
                             pcall(function()
-
                                 personagem:PivotTo(
                                     maca:GetPivot() + Vector3.new(0, 3, 0)
                                 )
-
                             end)
-
                         end
 
                         task.wait(INTERVALO_COLETA)
@@ -181,9 +231,7 @@ local function iniciarFarm()
                 end
 
             else
-
                 task.wait(1)
-
             end
 
             task.wait(0.2)
@@ -193,10 +241,6 @@ local function iniciarFarm()
     end)
 
 end
-
---==================================================
--- TOGGLE: COLETAR
---==================================================
 
 Tabs.Farm:AddToggle("FarmMacas", {
     Title = "Coletar",
@@ -237,7 +281,7 @@ local upgradesMacas = {
 }
 
 --==================================================
--- UPGRADE AUTOMÁTICO
+-- UPGRADE AUTOMÁTICO ALEATÓRIO
 --==================================================
 
 local upgradeAtivado = false
@@ -246,28 +290,32 @@ local upgradeRunId = 0
 local function iniciarUpgrade()
 
     upgradeRunId += 1
-
     local meuRun = upgradeRunId
 
     task.spawn(function()
 
         while upgradeAtivado and meuRun == upgradeRunId do
 
+            if not BuyUpgrade then
+                warn("Remote BuyUpgrade não encontrado.")
+                task.wait(3)
+                continue
+            end
+
             local escolhido = upgradesMacas[
                 math.random(1, #upgradesMacas)
             ]
 
             local sucesso, erro = pcall(function()
-
                 BuyUpgrade:InvokeServer(escolhido[1], true)
-
             end)
 
             if not sucesso then
                 warn("Erro no upgrade:", erro)
+                task.wait(1)
+            else
+                task.wait(INTERVALO_UPGRADE)
             end
-
-            task.wait(INTERVALO_UPGRADE)
 
         end
 
@@ -275,13 +323,9 @@ local function iniciarUpgrade()
 
 end
 
---==================================================
--- TOGGLE: UPGRADE AUTOMÁTICO DA TABELA
---==================================================
-
 Tabs.Farm:AddToggle("UpgradeTabela", {
     Title = "Upgrade automático da tabela",
-    Description = "Faz upgrades aleatórios automaticamente.",
+    Description = "Faz upgrades aleatórios mais rapidamente.",
     Default = false
 })
 
@@ -298,6 +342,306 @@ Options.UpgradeTabela:OnChanged(function()
 end)
 
 --==================================================
+-- QUANTIDADES DO REBIRTH
+--==================================================
+
+local quantidades = {
+    "100",
+    "1000",
+    "1M",
+    "10T",
+    "1Q",
+    "100Q",
+    "Personalizado"
+}
+
+local multiplicadores = {
+    K = 1e3,
+    M = 1e6,
+    B = 1e9,
+    T = 1e12,
+    Q = 1e15
+}
+
+local function converterQuantidade(valor)
+
+    if valor == nil then
+        return nil
+    end
+
+    local texto = tostring(valor):upper()
+    texto = texto:gsub("%s", "")
+    texto = texto:gsub(",", ".")
+
+    local numero, sufixo = texto:match("^([%d%.]+)([KMBTQ]?)$")
+
+    if not numero then
+        return nil
+    end
+
+    numero = tonumber(numero)
+
+    if not numero or numero <= 0 then
+        return nil
+    end
+
+    return numero * (multiplicadores[sufixo] or 1)
+
+end
+
+--==================================================
+-- CONFIGURAÇÃO DO REBIRTH
+--==================================================
+
+local quantidadeRebirth = "100"
+local quantidadeRebirthPersonalizada = "100"
+
+Tabs.Farm:AddParagraph({
+    Title = "Rebirth",
+    Content = "Configure a quantidade de maçãs necessária para realizar o Rebirth."
+})
+
+Tabs.Farm:AddDropdown("QuantidadeRebirth", {
+    Title = "Quantidade necessária",
+    Values = quantidades,
+    Multi = false,
+    Default = "100"
+})
+
+Options.QuantidadeRebirth:OnChanged(function(valor)
+    quantidadeRebirth = valor
+end)
+
+Tabs.Farm:AddInput("RebirthPersonalizado", {
+    Title = "Quantidade personalizada do Rebirth",
+    Description = "Exemplo: 5000, 1M ou 10T.",
+    Default = "100",
+    Placeholder = "Digite a quantidade",
+    Numeric = false,
+    Finished = true
+})
+
+Options.RebirthPersonalizado:OnChanged(function(valor)
+    quantidadeRebirthPersonalizada = valor
+end)
+
+local function obterQuantidadeRebirth()
+
+    if quantidadeRebirth == "Personalizado" then
+        return converterQuantidade(quantidadeRebirthPersonalizada)
+    end
+
+    return converterQuantidade(quantidadeRebirth)
+
+end
+
+--==================================================
+-- LER QUANTIDADE DE MAÇÃS
+--==================================================
+
+local function obterMacasAtuais()
+
+    local sucesso, resultado = pcall(function()
+
+        local framework = ReplicatedStorage:WaitForChild("Framework")
+        local features = framework:WaitForChild("Features")
+        local ui = features:WaitForChild("UI")
+
+        local UIReferences = require(
+            ui:WaitForChild("UIReferences")
+        )
+
+        local label = UIReferences.HUD.AutumnCurrency.Apples.TextLabel
+        local texto = tostring(label.Text):upper()
+
+        texto = texto:gsub("%s", "")
+        texto = texto:gsub("[^%d%.,KMBTQ]", "")
+
+        local numero, sufixo = texto:match("([%d%.,]+)([KMBTQ]?)")
+
+        if not numero then
+            return nil
+        end
+
+        if sufixo ~= "" then
+            numero = numero:gsub(",", ".")
+        else
+            numero = numero:gsub(",", "")
+        end
+
+        local valor = tonumber(numero)
+
+        if not valor then
+            return nil
+        end
+
+        return valor * (multiplicadores[sufixo] or 1)
+
+    end)
+
+    if sucesso then
+        return resultado
+    end
+
+    warn("Erro ao ler contador de maçãs:", resultado)
+    return nil
+
+end
+
+--==================================================
+-- AUTO REBIRTH
+--==================================================
+
+local rebirthAtivado = false
+local rebirthRunId = 0
+
+local function iniciarRebirth()
+
+    rebirthRunId += 1
+    local meuRun = rebirthRunId
+
+    task.spawn(function()
+
+        while rebirthAtivado and meuRun == rebirthRunId do
+
+            if not Rebirth then
+                warn("Remote Rebirth não encontrado.")
+                task.wait(3)
+                continue
+            end
+
+            local atual = obterMacasAtuais()
+            local necessario = obterQuantidadeRebirth()
+
+            if atual and necessario and atual >= necessario then
+
+                local sucesso, erro = pcall(function()
+                    Rebirth:InvokeServer()
+                end)
+
+                if not sucesso then
+                    warn("Erro no Auto Rebirth:", erro)
+                end
+
+                task.wait(5)
+
+            else
+                task.wait(INTERVALO_REBIRTH)
+            end
+
+        end
+
+    end)
+
+end
+
+Tabs.Farm:AddToggle("AutoRebirth", {
+    Title = "Auto Rebirth",
+    Description = "Realiza Rebirth quando atingir a quantidade configurada.",
+    Default = false
+})
+
+Options.AutoRebirth:OnChanged(function()
+
+    rebirthAtivado = Options.AutoRebirth.Value
+
+    if rebirthAtivado then
+        iniciarRebirth()
+    else
+        rebirthRunId += 1
+    end
+
+end)
+
+--==================================================
+-- UPGRADES DE REBIRTH
+--==================================================
+
+local upgradesRebirth = {
+    "Fertile Soil",
+    "Golden Roots",
+    "Auto Picker",
+    "Lucky Seeds",
+    "Golden Seeds",
+    "Bigger Basket",
+    "Head Start",
+    "Picker Haul",
+    "Double Trouble",
+    "Rush Hour",
+    "Mega Roots",
+    "Rare Roots",
+    "Orchard Overlord"
+}
+
+--==================================================
+-- AUTO UPGRADE REBIRTH
+--==================================================
+
+local upgradeRebirthAtivado = false
+local upgradeRebirthRunId = 0
+
+local function iniciarUpgradeRebirth()
+
+    upgradeRebirthRunId += 1
+    local meuRun = upgradeRebirthRunId
+
+    task.spawn(function()
+
+        while upgradeRebirthAtivado
+        and meuRun == upgradeRebirthRunId do
+
+            if not BuyRebirthUpgrade then
+                warn("Remote de upgrade Rebirth não encontrado.")
+                task.wait(3)
+                continue
+            end
+
+            for _, nomeUpgrade in ipairs(upgradesRebirth) do
+
+                if not upgradeRebirthAtivado
+                or meuRun ~= upgradeRebirthRunId then
+                    break
+                end
+
+                local sucesso, erro = pcall(function()
+                    BuyRebirthUpgrade:InvokeServer(nomeUpgrade, false)
+                end)
+
+                if not sucesso then
+                    warn("Erro no upgrade de Rebirth:", nomeUpgrade, erro)
+                end
+
+                task.wait(INTERVALO_UPGRADE_REBIRTH)
+
+            end
+
+            task.wait(1)
+
+        end
+
+    end)
+
+end
+
+Tabs.Farm:AddToggle("AutoUpgradeRebirth", {
+    Title = "Auto Upgrade Rebirth",
+    Description = "Tenta comprar os 13 upgrades de Rebirth.",
+    Default = false
+})
+
+Options.AutoUpgradeRebirth:OnChanged(function()
+
+    upgradeRebirthAtivado = Options.AutoUpgradeRebirth.Value
+
+    if upgradeRebirthAtivado then
+        iniciarUpgradeRebirth()
+    else
+        upgradeRebirthRunId += 1
+    end
+
+end)
+
+--==================================================
 -- DESEMPENHO
 --==================================================
 
@@ -307,10 +651,6 @@ local conexaoDescendant
 
 local sombrasOriginais = Lighting.GlobalShadows
 local nevoaOriginal = Lighting.FogEnd
-
---==================================================
--- GUARDAR PROPRIEDADES
---==================================================
 
 local function guardarPropriedade(objeto, propriedade)
 
@@ -331,10 +671,6 @@ local function guardarPropriedade(objeto, propriedade)
     end
 
 end
-
---==================================================
--- APLICAR GRÁFICOS BAIXOS
---==================================================
 
 local function aplicarGraficosBaixos(objeto)
 
@@ -377,10 +713,6 @@ local function aplicarGraficosBaixos(objeto)
 
 end
 
---==================================================
--- RESTAURAR GRÁFICOS
---==================================================
-
 local function restaurarGraficos()
 
     for objeto, propriedades in pairs(propriedadesOriginais) do
@@ -408,10 +740,6 @@ local function restaurarGraficos()
 
 end
 
---==================================================
--- ATIVAR GRÁFICOS BAIXOS
---==================================================
-
 local function ativarGraficosBaixos()
 
     for _, objeto in ipairs(game:GetDescendants()) do
@@ -434,10 +762,6 @@ local function ativarGraficosBaixos()
     end)
 
 end
-
---==================================================
--- TOGGLE: GRÁFICOS BAIXOS
---==================================================
 
 Tabs.Desempenho:AddToggle("GraficosBaixos", {
     Title = "Gráficos baixos",
@@ -464,19 +788,11 @@ Options.GraficosBaixos:OnChanged(function()
 
 end)
 
---==================================================
--- MODO AFK
---==================================================
-
 Tabs.Desempenho:AddToggle("ModoAFK", {
     Title = "Modo AFK de baixo consumo",
     Description = "Opção reservada para uma implementação futura.",
     Default = false
 })
-
---==================================================
--- BOTÃO RESTAURAR GRÁFICOS
---==================================================
 
 Tabs.Desempenho:AddButton({
     Title = "Restaurar gráficos",
@@ -508,20 +824,24 @@ Tabs.Desempenho:AddButton({
 -- SETTINGS
 --==================================================
 
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
+if SaveManager and InterfaceManager then
 
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({})
+    SaveManager:SetLibrary(Fluent)
+    InterfaceManager:SetLibrary(Fluent)
 
-InterfaceManager:SetFolder("FluentScriptHub")
-SaveManager:SetFolder("FluentScriptHub/specific-game")
+    SaveManager:IgnoreThemeSettings()
+    SaveManager:SetIgnoreIndexes({})
 
-InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
+    InterfaceManager:SetFolder("FluentScriptHub")
+    SaveManager:SetFolder("FluentScriptHub/specific-game")
+
+    InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+    SaveManager:BuildConfigSection(Tabs.Settings)
+
+end
 
 --==================================================
--- ÍCONE PARA REABRIR A UI
+-- ÍCONE FLUTUANTE
 --==================================================
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -529,6 +849,7 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FarmMacasIcon"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = PlayerGui
 
 local BotaoAbrir = Instance.new("ImageButton")
@@ -539,13 +860,15 @@ BotaoAbrir.Position = UDim2.new(0, 15, 0.5, -30)
 BotaoAbrir.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 BotaoAbrir.BackgroundTransparency = 0
 BotaoAbrir.Image = "rbxassetid://110071391795024"
+BotaoAbrir.ImageColor3 = Color3.fromRGB(255, 255, 255)
 BotaoAbrir.ImageTransparency = 0
 BotaoAbrir.ScaleType = Enum.ScaleType.Fit
 BotaoAbrir.Visible = false
+BotaoAbrir.AutoButtonColor = false
 BotaoAbrir.Parent = ScreenGui
 
 --==================================================
--- FORMATO DO ÍCONE
+-- FORMATO REDONDO
 --==================================================
 
 local UICorner = Instance.new("UICorner")
@@ -559,156 +882,4 @@ UIStroke.Thickness = 1.5
 UIStroke.Color = Color3.fromRGB(255, 255, 255)
 UIStroke.Parent = BotaoAbrir
 
---==================================================
--- CORES CONFORME O TEMA
---==================================================
-
-local function atualizarCoresIcone(tema)
-
-    local cores = {
-
-        Dark = {
-            Fundo = Color3.fromRGB(0, 0, 0),
-            Contorno = Color3.fromRGB(255, 255, 255)
-        },
-
-        Light = {
-            Fundo = Color3.fromRGB(245, 245, 245),
-            Contorno = Color3.fromRGB(35, 35, 35)
-        },
-
-        Aqua = {
-            Fundo = Color3.fromRGB(0, 65, 75),
-            Contorno = Color3.fromRGB(90, 220, 235)
-        },
-
-        Amethyst = {
-            Fundo = Color3.fromRGB(65, 30, 95),
-            Contorno = Color3.fromRGB(195, 145, 255)
-        },
-
-        Rose = {
-            Fundo = Color3.fromRGB(100, 35, 55),
-            Contorno = Color3.fromRGB(255, 145, 180)
-        }
-
-    }
-
-    local selecionado = cores[tema] or cores.Dark
-
-    BotaoAbrir.BackgroundColor3 = selecionado.Fundo
-    UIStroke.Color = selecionado.Contorno
-
-end
-
-atualizarCoresIcone("Dark")
-
---==================================================
--- ARRASTAR ÍCONE
---==================================================
-
-local dragging = false
-local dragInput
-local dragStart
-local startPosition
-local moved = false
-
-BotaoAbrir.InputBegan:Connect(function(input)
-
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-
-        dragging = true
-        moved = false
-
-        dragStart = input.Position
-        startPosition = BotaoAbrir.Position
-
-        input.Changed:Connect(function()
-
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-
-        end)
-
-    end
-
-end)
-
-BotaoAbrir.InputChanged:Connect(function(input)
-
-    if input.UserInputType == Enum.UserInputType.MouseMovement
-    or input.UserInputType == Enum.UserInputType.Touch then
-
-        dragInput = input
-
-    end
-
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-
-    if dragging and input == dragInput then
-
-        local delta = input.Position - dragStart
-
-        if math.abs(delta.X) > 5 or math.abs(delta.Y) > 5 then
-            moved = true
-        end
-
-        BotaoAbrir.Position = UDim2.new(
-            startPosition.X.Scale,
-            startPosition.X.Offset + delta.X,
-            startPosition.Y.Scale,
-            startPosition.Y.Offset + delta.Y
-        )
-
-    end
-
-end)
-
---==================================================
--- REABRIR INTERFACE
---==================================================
-
-BotaoAbrir.Activated:Connect(function()
-
-    if moved then
-        moved = false
-        return
-    end
-
-    if Window.Minimized then
-        Window:Minimize()
-    end
-
-end)
-
---==================================================
--- MOSTRAR ÍCONE QUANDO MINIMIZAR
---==================================================
-
-task.spawn(function()
-
-    while ScreenGui.Parent do
-
-        BotaoAbrir.Visible = Window.Minimized == true
-
-        task.wait(0.2)
-
-    end
-
-end)
-
---==================================================
--- INICIAR
---==================================================
-
-Window:SelectTab(1)
-
-Fluent:Notify({
-    Title = "Farm de maçã",
-    Content = "Interface carregada com sucesso!",
-    Duration = 4
-})
+--=======
