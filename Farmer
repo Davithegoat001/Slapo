@@ -1,8 +1,4 @@
 
---==================================================
--- CARREGAR FLUENT
---==================================================
-
 local sucessoFluent, Fluent = pcall(function()
     return loadstring(game:HttpGet(
         "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
@@ -10,13 +6,8 @@ local sucessoFluent, Fluent = pcall(function()
 end)
 
 if not sucessoFluent or not Fluent then
-    warn("Erro ao carregar Fluent:", Fluent)
     return
 end
-
---==================================================
--- CARREGAR ADDONS
---==================================================
 
 local function carregarAddon(url)
     local sucesso, resultado = pcall(function()
@@ -27,7 +18,6 @@ local function carregarAddon(url)
         return resultado
     end
 
-    warn("Erro ao carregar addon:", resultado)
     return nil
 end
 
@@ -39,32 +29,19 @@ local InterfaceManager = carregarAddon(
     "https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"
 )
 
---==================================================
--- SERVIÇOS
---==================================================
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
+local VirtualUser = game:GetService("VirtualUser")
+local UserInputService = game:GetService("UserInputService")
 
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
-
-local Network = ReplicatedStorage:WaitForChild("Network")
-
---==================================================
--- CONFIGURAÇÕES
---==================================================
 
 local INTERVALO_COLETA = 0.6
 local INTERVALO_UPGRADE = 0.3
 local INTERVALO_REBIRTH = 3
 local INTERVALO_UPGRADE_REBIRTH = 3
-
---==================================================
--- CRIAR JANELA
---==================================================
 
 local Window = Fluent:CreateWindow({
     Title = "Farm de maçã",
@@ -75,10 +52,6 @@ local Window = Fluent:CreateWindow({
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.LeftControl
 })
-
---==================================================
--- ABAS
---==================================================
 
 local Tabs = {
     Main = Window:AddTab({
@@ -104,18 +77,10 @@ local Tabs = {
 
 local Options = Fluent.Options
 
---==================================================
--- MAIN
---==================================================
-
 Tabs.Main:AddParagraph({
     Title = "Obs:",
-    Content = "Farm de maçã e upgrade só funciona depois que você entrar no portal."
+    Content = "Farm de maçã e upgrades só funcionam depois que você entrar no portal."
 })
-
---==================================================
--- ENCONTRAR REMOTES
---==================================================
 
 local function encontrarRemote(caminho)
     local atual = ReplicatedStorage
@@ -152,12 +117,7 @@ local BuyRebirthUpgrade = encontrarRemote({
     "BuyUpgrade"
 })
 
---==================================================
--- ENCONTRAR PASTA DAS MAÇÃS
---==================================================
-
 local function encontrarMacas()
-
     local pasta = workspace:FindFirstChild("AutumnApples")
 
     if pasta then
@@ -173,73 +133,40 @@ local function encontrarMacas()
     return nil
 end
 
---==================================================
--- FARM DE MAÇÃ
---==================================================
-
 local farmAtivado = false
 local farmRunId = 0
 
 local function iniciarFarm()
-
     farmRunId += 1
+
     local meuRun = farmRunId
 
     task.spawn(function()
-
-        local pastaMacas = encontrarMacas()
-
-        while farmAtivado
-        and meuRun == farmRunId
-        and not pastaMacas do
-
-            task.wait(1)
-            pastaMacas = encontrarMacas()
-
-        end
-
         while farmAtivado and meuRun == farmRunId do
+            local pasta = encontrarMacas()
+            local personagem = Player.Character
 
-            if not pastaMacas or not pastaMacas.Parent then
-                pastaMacas = encontrarMacas()
-            end
-
-            if pastaMacas then
-
-                for _, maca in ipairs(pastaMacas:GetChildren()) do
-
+            if pasta and personagem then
+                for _, maca in ipairs(pasta:GetChildren()) do
                     if not farmAtivado or meuRun ~= farmRunId then
                         break
                     end
 
-                    if maca:IsA("Model") and maca.Parent then
+                    personagem = Player.Character
 
-                        local personagem = Player.Character
-
-                        if personagem and personagem.Parent then
-                            pcall(function()
-                                personagem:PivotTo(
-                                    maca:GetPivot() + Vector3.new(0, 3, 0)
-                                )
-                            end)
-                        end
+                    if maca:IsA("Model") and maca.Parent and personagem then
+                        personagem:PivotTo(
+                            maca:GetPivot() + Vector3.new(0, 3, 0)
+                        )
 
                         task.wait(INTERVALO_COLETA)
-
                     end
-
                 end
-
-            else
-                task.wait(1)
             end
 
-            task.wait(0.2)
-
+            task.wait(0.1)
         end
-
     end)
-
 end
 
 Tabs.Farm:AddToggle("FarmMacas", {
@@ -249,7 +176,6 @@ Tabs.Farm:AddToggle("FarmMacas", {
 })
 
 Options.FarmMacas:OnChanged(function()
-
     farmAtivado = Options.FarmMacas.Value
 
     if farmAtivado then
@@ -257,80 +183,60 @@ Options.FarmMacas:OnChanged(function()
     else
         farmRunId += 1
     end
-
 end)
 
---==================================================
--- TABELA DE UPGRADES
---==================================================
-
 local upgradesMacas = {
-    {"Juicy Apples", 75},
-    {"Faster Growth", 30},
-    {"Bigger Harvest", 30},
-    {"Lucky Apples", 40},
-    {"Long Reach", 16},
-    {"Double Pick", 25},
-    {"Apple Combo", 20},
-    {"Leaf Picker", 20},
-    {"Apple Cloud Shower", 10},
-    {"Rare Shrine", 25},
-    {"Mega Apples", 25},
-    {"Apple Frenzy", 20},
-    {"Orchard Mastery", 20}
+    "Juicy Apples",
+    "Faster Growth",
+    "Bigger Harvest",
+    "Lucky Apples",
+    "Long Reach",
+    "Double Pick",
+    "Apple Combo",
+    "Leaf Picker",
+    "Apple Shower",
+    "Rare Shine",
+    "Mega Apples",
+    "Apple Frenzy",
+    "Orchard Mastery"
 }
-
---==================================================
--- UPGRADE AUTOMÁTICO ALEATÓRIO
---==================================================
 
 local upgradeAtivado = false
 local upgradeRunId = 0
 
 local function iniciarUpgrade()
-
     upgradeRunId += 1
+
     local meuRun = upgradeRunId
 
     task.spawn(function()
-
         while upgradeAtivado and meuRun == upgradeRunId do
+            if BuyUpgrade then
+                for _, nomeUpgrade in ipairs(upgradesMacas) do
+                    if not upgradeAtivado or meuRun ~= upgradeRunId then
+                        break
+                    end
 
-            if not BuyUpgrade then
-                warn("Remote BuyUpgrade não encontrado.")
-                task.wait(3)
-                continue
-            end
+                    pcall(function()
+                        BuyUpgrade:InvokeServer(nomeUpgrade, true)
+                    end)
 
-            local escolhido = upgradesMacas[
-                math.random(1, #upgradesMacas)
-            ]
-
-            local sucesso, erro = pcall(function()
-                BuyUpgrade:InvokeServer(escolhido[1], true)
-            end)
-
-            if not sucesso then
-                warn("Erro no upgrade:", erro)
-                task.wait(1)
+                    task.wait(INTERVALO_UPGRADE)
+                end
             else
-                task.wait(INTERVALO_UPGRADE)
+                task.wait(3)
             end
-
         end
-
     end)
-
 end
 
 Tabs.Farm:AddToggle("UpgradeTabela", {
     Title = "Upgrade automático da tabela",
-    Description = "Faz upgrades aleatórios mais rapidamente.",
+    Description = "Compra os upgrades automaticamente em sequência.",
     Default = false
 })
 
 Options.UpgradeTabela:OnChanged(function()
-
     upgradeAtivado = Options.UpgradeTabela.Value
 
     if upgradeAtivado then
@@ -338,12 +244,7 @@ Options.UpgradeTabela:OnChanged(function()
     else
         upgradeRunId += 1
     end
-
 end)
-
---==================================================
--- QUANTIDADES DO REBIRTH
---==================================================
 
 local quantidades = {
     "100",
@@ -363,49 +264,34 @@ local multiplicadores = {
     Q = 1e15
 }
 
+local quantidadeRebirth = "100"
+local quantidadeRebirthPersonalizada = "100"
+
 local function converterQuantidade(valor)
+    valor = tostring(valor):upper()
+    valor = valor:gsub("%s+", "")
+    valor = valor:gsub(",", ".")
 
-    if valor == nil then
-        return nil
-    end
-
-    local texto = tostring(valor):upper()
-    texto = texto:gsub("%s", "")
-    texto = texto:gsub(",", ".")
-
-    local numero, sufixo = texto:match("^([%d%.]+)([KMBTQ]?)$")
+    local numero, sufixo = valor:match("^([%d%.]+)([KMBTQ]?)$")
 
     if not numero then
-        return nil
+        return 0
     end
 
     numero = tonumber(numero)
 
-    if not numero or numero <= 0 then
-        return nil
+    if not numero then
+        return 0
     end
 
     return numero * (multiplicadores[sufixo] or 1)
-
 end
 
---==================================================
--- CONFIGURAÇÃO DO REBIRTH
---==================================================
-
-local quantidadeRebirth = "100"
-local quantidadeRebirthPersonalizada = "100"
-
-Tabs.Farm:AddParagraph({
-    Title = "Rebirth",
-    Content = "Configure a quantidade de maçãs necessária para realizar o Rebirth."
-})
-
 Tabs.Farm:AddDropdown("QuantidadeRebirth", {
-    Title = "Quantidade necessária",
+    Title = "Quantidade de maçãs para Rebirth",
     Values = quantidades,
     Multi = false,
-    Default = "100"
+    Default = 1
 })
 
 Options.QuantidadeRebirth:OnChanged(function(valor)
@@ -413,12 +299,10 @@ Options.QuantidadeRebirth:OnChanged(function(valor)
 end)
 
 Tabs.Farm:AddInput("RebirthPersonalizado", {
-    Title = "Quantidade personalizada do Rebirth",
-    Description = "Exemplo: 5000, 1M ou 10T.",
+    Title = "Quantidade personalizada",
     Default = "100",
-    Placeholder = "Digite a quantidade",
-    Numeric = false,
-    Finished = true
+    Placeholder = "Exemplo: 500K",
+    Numeric = false
 })
 
 Options.RebirthPersonalizado:OnChanged(function(valor)
@@ -426,123 +310,69 @@ Options.RebirthPersonalizado:OnChanged(function(valor)
 end)
 
 local function obterQuantidadeRebirth()
-
     if quantidadeRebirth == "Personalizado" then
         return converterQuantidade(quantidadeRebirthPersonalizada)
     end
 
     return converterQuantidade(quantidadeRebirth)
-
 end
 
---==================================================
--- LER QUANTIDADE DE MAÇÃS
---==================================================
-
 local function obterMacasAtuais()
-
     local sucesso, resultado = pcall(function()
-
-        local framework = ReplicatedStorage:WaitForChild("Framework")
-        local features = framework:WaitForChild("Features")
-        local ui = features:WaitForChild("UI")
-
         local UIReferences = require(
-            ui:WaitForChild("UIReferences")
+            ReplicatedStorage.Framework.Features.UI.UIReferences
         )
 
         local label = UIReferences.HUD.AutumnCurrency.Apples.TextLabel
-        local texto = tostring(label.Text):upper()
+        local texto = label.Text
 
-        texto = texto:gsub("%s", "")
-        texto = texto:gsub("[^%d%.,KMBTQ]", "")
+        texto = texto:gsub("%s+", "")
+        texto = texto:gsub("[^%d%.,KMBTQkmbtq]", "")
+        texto = texto:upper()
 
-        local numero, sufixo = texto:match("([%d%.,]+)([KMBTQ]?)")
-
-        if not numero then
-            return nil
-        end
-
-        if sufixo ~= "" then
-            numero = numero:gsub(",", ".")
-        else
-            numero = numero:gsub(",", "")
-        end
-
-        local valor = tonumber(numero)
-
-        if not valor then
-            return nil
-        end
-
-        return valor * (multiplicadores[sufixo] or 1)
-
+        return converterQuantidade(texto)
     end)
 
     if sucesso then
         return resultado
     end
 
-    warn("Erro ao ler contador de maçãs:", resultado)
-    return nil
-
+    return 0
 end
-
---==================================================
--- AUTO REBIRTH
---==================================================
 
 local rebirthAtivado = false
 local rebirthRunId = 0
 
 local function iniciarRebirth()
-
     rebirthRunId += 1
+
     local meuRun = rebirthRunId
 
     task.spawn(function()
-
         while rebirthAtivado and meuRun == rebirthRunId do
-
-            if not Rebirth then
-                warn("Remote Rebirth não encontrado.")
-                task.wait(3)
-                continue
-            end
-
             local atual = obterMacasAtuais()
             local necessario = obterQuantidadeRebirth()
 
-            if atual and necessario and atual >= necessario then
-
-                local sucesso, erro = pcall(function()
+            if atual >= necessario and Rebirth then
+                pcall(function()
                     Rebirth:InvokeServer()
                 end)
 
-                if not sucesso then
-                    warn("Erro no Auto Rebirth:", erro)
-                end
-
                 task.wait(5)
-
             else
                 task.wait(INTERVALO_REBIRTH)
             end
-
         end
-
     end)
-
 end
 
 Tabs.Farm:AddToggle("AutoRebirth", {
     Title = "Auto Rebirth",
-    Description = "Realiza Rebirth quando atingir a quantidade configurada.",
+    Description = "Faz Rebirth automaticamente ao atingir a quantidade escolhida.",
     Default = false
 })
 
 Options.AutoRebirth:OnChanged(function()
-
     rebirthAtivado = Options.AutoRebirth.Value
 
     if rebirthAtivado then
@@ -550,12 +380,7 @@ Options.AutoRebirth:OnChanged(function()
     else
         rebirthRunId += 1
     end
-
 end)
-
---==================================================
--- UPGRADES DE REBIRTH
---==================================================
 
 local upgradesRebirth = {
     "Fertile Soil",
@@ -573,64 +398,42 @@ local upgradesRebirth = {
     "Orchard Overlord"
 }
 
---==================================================
--- AUTO UPGRADE REBIRTH
---==================================================
-
 local upgradeRebirthAtivado = false
 local upgradeRebirthRunId = 0
 
 local function iniciarUpgradeRebirth()
-
     upgradeRebirthRunId += 1
+
     local meuRun = upgradeRebirthRunId
 
     task.spawn(function()
+        while upgradeRebirthAtivado and meuRun == upgradeRebirthRunId do
+            if BuyRebirthUpgrade then
+                for _, nomeUpgrade in ipairs(upgradesRebirth) do
+                    if not upgradeRebirthAtivado or meuRun ~= upgradeRebirthRunId then
+                        break
+                    end
 
-        while upgradeRebirthAtivado
-        and meuRun == upgradeRebirthRunId do
+                    pcall(function()
+                        BuyRebirthUpgrade:InvokeServer(nomeUpgrade, false)
+                    end)
 
-            if not BuyRebirthUpgrade then
-                warn("Remote de upgrade Rebirth não encontrado.")
+                    task.wait(INTERVALO_UPGRADE_REBIRTH)
+                end
+            else
                 task.wait(3)
-                continue
             end
-
-            for _, nomeUpgrade in ipairs(upgradesRebirth) do
-
-                if not upgradeRebirthAtivado
-                or meuRun ~= upgradeRebirthRunId then
-                    break
-                end
-
-                local sucesso, erro = pcall(function()
-                    BuyRebirthUpgrade:InvokeServer(nomeUpgrade, false)
-                end)
-
-                if not sucesso then
-                    warn("Erro no upgrade de Rebirth:", nomeUpgrade, erro)
-                end
-
-                task.wait(INTERVALO_UPGRADE_REBIRTH)
-
-            end
-
-            task.wait(1)
-
         end
-
     end)
-
 end
 
 Tabs.Farm:AddToggle("AutoUpgradeRebirth", {
-    Title = "Auto Upgrade Rebirth",
-    Description = "Tenta comprar os 13 upgrades de Rebirth.",
+    Title = "Upgrade automático de Rebirth",
+    Description = "Compra os upgrades de Rebirth em sequência.",
     Default = false
 })
 
 Options.AutoUpgradeRebirth:OnChanged(function()
-
     upgradeRebirthAtivado = Options.AutoUpgradeRebirth.Value
 
     if upgradeRebirthAtivado then
@@ -638,28 +441,21 @@ Options.AutoUpgradeRebirth:OnChanged(function()
     else
         upgradeRebirthRunId += 1
     end
-
 end)
-
---==================================================
--- DESEMPENHO
---==================================================
 
 local graficosBaixos = false
 local propriedadesOriginais = {}
-local conexaoDescendant
+local conexaoDescendant = nil
 
 local sombrasOriginais = Lighting.GlobalShadows
-local nevoaOriginal = Lighting.FogEnd
+local neblinaOriginal = Lighting.FogEnd
 
 local function guardarPropriedade(objeto, propriedade)
-
     if not propriedadesOriginais[objeto] then
         propriedadesOriginais[objeto] = {}
     end
 
     if propriedadesOriginais[objeto][propriedade] == nil then
-
         local sucesso, valor = pcall(function()
             return objeto[propriedade]
         end)
@@ -667,81 +463,58 @@ local function guardarPropriedade(objeto, propriedade)
         if sucesso then
             propriedadesOriginais[objeto][propriedade] = valor
         end
-
     end
-
 end
 
 local function aplicarGraficosBaixos(objeto)
+    pcall(function()
+        if objeto:IsA("ParticleEmitter")
+        or objeto:IsA("Trail")
+        or objeto:IsA("Beam")
+        or objeto:IsA("Fire")
+        or objeto:IsA("Smoke")
+        or objeto:IsA("Sparkles") then
 
-    if objeto:IsA("ParticleEmitter")
-    or objeto:IsA("Trail")
-    or objeto:IsA("Beam")
-    or objeto:IsA("Fire")
-    or objeto:IsA("Smoke")
-    or objeto:IsA("Sparkles") then
-
-        guardarPropriedade(objeto, "Enabled")
-
-        pcall(function()
+            guardarPropriedade(objeto, "Enabled")
             objeto.Enabled = false
-        end)
 
-    end
+        elseif objeto:IsA("BasePart") then
+            guardarPropriedade(objeto, "Material")
+            guardarPropriedade(objeto, "CastShadow")
 
-    if objeto:IsA("BasePart") then
-
-        guardarPropriedade(objeto, "Material")
-        guardarPropriedade(objeto, "CastShadow")
-
-        pcall(function()
             objeto.Material = Enum.Material.SmoothPlastic
             objeto.CastShadow = false
-        end)
 
-    end
-
-    if objeto:IsA("Decal") or objeto:IsA("Texture") then
-
-        guardarPropriedade(objeto, "Transparency")
-
-        pcall(function()
+        elseif objeto:IsA("Decal") or objeto:IsA("Texture") then
+            guardarPropriedade(objeto, "Transparency")
             objeto.Transparency = 1
-        end)
-
-    end
-
+        end
+    end)
 end
 
 local function restaurarGraficos()
+    if conexaoDescendant then
+        conexaoDescendant:Disconnect()
+        conexaoDescendant = nil
+    end
 
     for objeto, propriedades in pairs(propriedadesOriginais) do
-
         if objeto and objeto.Parent then
-
             for propriedade, valor in pairs(propriedades) do
-
                 pcall(function()
                     objeto[propriedade] = valor
                 end)
-
             end
-
         end
-
     end
 
     propriedadesOriginais = {}
 
-    pcall(function()
-        Lighting.GlobalShadows = sombrasOriginais
-        Lighting.FogEnd = nevoaOriginal
-    end)
-
+    Lighting.GlobalShadows = sombrasOriginais
+    Lighting.FogEnd = neblinaOriginal
 end
 
 local function ativarGraficosBaixos()
-
     for _, objeto in ipairs(game:GetDescendants()) do
         aplicarGraficosBaixos(objeto)
     end
@@ -754,78 +527,81 @@ local function ativarGraficosBaixos()
     end
 
     conexaoDescendant = game.DescendantAdded:Connect(function(objeto)
-
         if graficosBaixos then
             aplicarGraficosBaixos(objeto)
         end
-
     end)
-
 end
 
 Tabs.Desempenho:AddToggle("GraficosBaixos", {
     Title = "Gráficos baixos",
-    Description = "Reduz efeitos visuais para melhorar o desempenho.",
+    Description = "Desativa efeitos visuais para melhorar o desempenho.",
     Default = false
 })
 
 Options.GraficosBaixos:OnChanged(function()
-
     graficosBaixos = Options.GraficosBaixos.Value
 
     if graficosBaixos then
         ativarGraficosBaixos()
     else
-
-        if conexaoDescendant then
-            conexaoDescendant:Disconnect()
-            conexaoDescendant = nil
-        end
-
         restaurarGraficos()
-
     end
-
 end)
-
-Tabs.Desempenho:AddToggle("ModoAFK", {
-    Title = "Modo AFK de baixo consumo",
-    Description = "Opção reservada para uma implementação futura.",
-    Default = false
-})
 
 Tabs.Desempenho:AddButton({
     Title = "Restaurar gráficos",
-    Description = "Restaura as propriedades visuais guardadas.",
-
+    Description = "Restaura as propriedades visuais salvas.",
     Callback = function()
-
         graficosBaixos = false
-
-        if conexaoDescendant then
-            conexaoDescendant:Disconnect()
-            conexaoDescendant = nil
-        end
-
-        restaurarGraficos()
-
         Options.GraficosBaixos:SetValue(false)
-
-        Fluent:Notify({
-            Title = "Desempenho",
-            Content = "Gráficos restaurados.",
-            Duration = 3
-        })
-
+        restaurarGraficos()
     end
 })
 
---==================================================
--- SETTINGS
---==================================================
+local modoAFKAtivado = false
+local conexaoAFK = nil
+
+local function ativarModoAFK()
+    if conexaoAFK then
+        conexaoAFK:Disconnect()
+        conexaoAFK = nil
+    end
+
+    conexaoAFK = Player.Idled:Connect(function()
+        if modoAFKAtivado then
+            pcall(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new(0, 0))
+            end)
+        end
+    end)
+end
+
+local function desativarModoAFK()
+    if conexaoAFK then
+        conexaoAFK:Disconnect()
+        conexaoAFK = nil
+    end
+end
+
+Tabs.Desempenho:AddToggle("ModoAFK", {
+    Title = "Modo AFK",
+    Description = "Em Beta",
+    Default = false
+})
+
+Options.ModoAFK:OnChanged(function()
+    modoAFKAtivado = Options.ModoAFK.Value
+
+    if modoAFKAtivado then
+        ativarModoAFK()
+    else
+        desativarModoAFK()
+    end
+end)
 
 if SaveManager and InterfaceManager then
-
     SaveManager:SetLibrary(Fluent)
     InterfaceManager:SetLibrary(Fluent)
 
@@ -837,23 +613,23 @@ if SaveManager and InterfaceManager then
 
     InterfaceManager:BuildInterfaceSection(Tabs.Settings)
     SaveManager:BuildConfigSection(Tabs.Settings)
-
 end
 
---==================================================
--- ÍCONE FLUTUANTE
---==================================================
+local GuiAntiga = PlayerGui:FindFirstChild("FarmMacasIcon")
+
+if GuiAntiga then
+    GuiAntiga:Destroy()
+end
 
 local ScreenGui = Instance.new("ScreenGui")
-
 ScreenGui.Name = "FarmMacasIcon"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.DisplayOrder = 999
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = PlayerGui
 
 local BotaoAbrir = Instance.new("ImageButton")
-
 BotaoAbrir.Name = "BotaoAbrir"
 BotaoAbrir.Size = UDim2.fromOffset(60, 60)
 BotaoAbrir.Position = UDim2.new(0, 15, 0.5, -30)
@@ -865,21 +641,112 @@ BotaoAbrir.ImageTransparency = 0
 BotaoAbrir.ScaleType = Enum.ScaleType.Fit
 BotaoAbrir.Visible = false
 BotaoAbrir.AutoButtonColor = false
+BotaoAbrir.Active = true
+BotaoAbrir.ZIndex = 10
 BotaoAbrir.Parent = ScreenGui
 
---==================================================
--- FORMATO REDONDO
---==================================================
-
 local UICorner = Instance.new("UICorner")
-
 UICorner.CornerRadius = UDim.new(1, 0)
 UICorner.Parent = BotaoAbrir
 
 local UIStroke = Instance.new("UIStroke")
-
 UIStroke.Thickness = 1.5
 UIStroke.Color = Color3.fromRGB(255, 255, 255)
 UIStroke.Parent = BotaoAbrir
 
---=======
+local dragging = false
+local foiArrastado = false
+local inputInicial = nil
+local posicaoInicial = nil
+local inicioToque = nil
+
+local function atualizarIcone()
+    BotaoAbrir.Visible = Window.Minimized
+end
+
+BotaoAbrir.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        dragging = true
+        foiArrastado = false
+        inputInicial = input
+        inicioToque = input.Position
+        posicaoInicial = BotaoAbrir.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if not dragging then
+        return
+    end
+
+    local movimentoValido =
+        input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch
+
+    if not movimentoValido then
+        return
+    end
+
+    local delta = input.Position - inicioToque
+
+    if delta.Magnitude > 5 then
+        foiArrastado = true
+    end
+
+    if foiArrastado then
+        local novaX = posicaoInicial.X.Offset + delta.X
+        local novaY = posicaoInicial.Y.Offset + delta.Y
+
+        local camera = workspace.CurrentCamera
+        local tamanhoTela = camera.ViewportSize
+        local tamanhoBotao = BotaoAbrir.AbsoluteSize
+
+        novaX = math.clamp(
+            novaX,
+            0,
+            tamanhoTela.X - tamanhoBotao.X
+        )
+
+        novaY = math.clamp(
+            novaY,
+            0,
+            tamanhoTela.Y - tamanhoBotao.Y
+        )
+
+        BotaoAbrir.Position = UDim2.fromOffset(novaX, novaY)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    local terminouToque =
+        input.UserInputType == Enum.UserInputType.Touch
+        and input == inputInicial
+
+    local terminouMouse =
+        input.UserInputType == Enum.UserInputType.MouseButton1
+
+    if not dragging or not (terminouToque or terminouMouse) then
+        return
+    end
+
+    dragging = false
+
+    if not foiArrastado and Window.Minimized then
+        Window:Minimize()
+    end
+
+    atualizarIcone()
+
+    inputInicial = nil
+    inicioToque = nil
+    posicaoInicial = nil
+end)
+
+task.spawn(function()
+    while ScreenGui.Parent do
+        atualizarIcone()
+        task.wait(0.1)
+    end
+end)
